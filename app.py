@@ -62,3 +62,18 @@ def check_status(order_id):
 
             if status == 'EMPTY':
                 return '', '', '', '', ''
+
+def operation(crypto, buy_price, buy_amount):
+    order_id = buy(crypto, buy_price, buy_amount)
+    amount, price, cost, market, time_stamp = check_status(
+        order_id)
+
+    if not amount:
+        return
+
+    PROFIT_PERCENTAGE = 5 ## percentage of profit that you want sell
+    profit = price * (1 + ( PROFIT_PERCENTAGE * 0.01 ))
+    response_sell = sell(crypto, profit, amount)
+
+    print('Operation: ',
+          response_sell['message_cod'], asctime(localtime()))
