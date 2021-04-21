@@ -1,3 +1,6 @@
+from time import sleep, localtime, asctime
+from operator import itemgetter as destructuring
+
 import requests
 
 DOMAIN = 'https://api-simulator.bitpreco.com' ## dev environment bitpreco
@@ -31,3 +34,31 @@ def sell(crypto, sell_price, sell_amount_crypto):
     data_sell = json.dumps({"cmd": "sell", "market": f"{crypto.upper()}-BRL", "price": sell_price,
                             "amount": sell_amount_crypto, "auth_token": AUTH_TOKEN})
     return api_call(data_sell)
+
+
+def check_status(order_id):
+    while(True):
+        sleep(30)
+        data_order_status = json.dumps({"cmd": "order_status",
+                                        "order_id": order_id, "auth_token": AUTH_TOKEN})
+
+        response_order_status = api_call(data_order_status)
+        status, exec_amount, price, cost, market, time_stamp = destructuring(
+            'status', 'exec_amount', 'price', 'cost', 'market', 'time_stamp')(response_order_status['order'])
+
+        if status == 'FILLED' and exec_amount > 0:
+            return exec_amount, price, cost, market, time_stamp
+
+        diff = datetime.now() - datetime.strptime(time_stamp, "%Y-%m-%d %H:%M:%S")
+        THREE_HOURS = (3600*3)
+
+        if diff.seconds > THREE_HOURS:
+            data_order_cancel = json.dumps({"cmd": "order_cancel",
+                                            "order_id": order_id, "auth_token": AUTH_TOKEN})
+            response_order_cancel = api_call(data_order_cancel)
+
+            if status == 'PARTIAL':
+                return exec_amount, price, cost, market, time_stamp
+
+            if status == 'EMPTY':
+                return '', '', '', '', ''
