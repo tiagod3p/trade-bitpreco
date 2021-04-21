@@ -1,5 +1,9 @@
 from time import sleep, localtime, asctime
+from datetime import datetime
 from operator import itemgetter as destructuring
+import json
+import threading
+import traceback
 
 import requests
 
@@ -77,3 +81,32 @@ def operation(crypto, buy_price, buy_amount):
 
     print('Operation: ',
           response_sell['message_cod'], asctime(localtime()))
+
+
+while(True):
+    try:
+        sleep(30)
+
+        response_eth = info_crypto('eth')
+        response_btc = info_crypto('btc')
+
+        buy_btc = destructuring('buy')(response_btc)
+        buy_eth = destructuring('buy')(response_eth)
+
+        data_balance = json.dumps({"cmd": "balance", "auth_token": AUTH_TOKEN})
+        response_balance = api_call(data_balance)
+
+        brl = response_balance['BRL'] ## BRL Quantity available to trade
+
+        buy_amount_btc, buy_amount_eth = (brl/2)/buy_btc, (brl/2)/buy_eth ## quantity available to trade ethereum and bitcoin
+
+        if buy_amount_btc >= 0.001 and buy_amount_eth >= 0.01: ## minimum amount to buy on bitpreco
+            threading.Thread(target=operation, args=('btc', buy_btc, buy_amount_btc)).start()
+            threading.Thread(target=operation, args=('eth', buy_eth, buy_amount_eth)).start()
+
+        elif brl/buy_eth >= 0.01: ## only buy eth
+            operation('ETH', buy_eth, brl/buy_eth)
+    except Exception as err:
+        tb = traceback.format_exc()
+        print(err, asctime(localtime()))
+        print(tb)
